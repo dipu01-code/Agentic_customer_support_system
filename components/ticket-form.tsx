@@ -53,6 +53,11 @@ export function TicketForm({ userName, userEmail }: TicketFormProps) {
 
   return (
     <form className="customer-ticket-form" onSubmit={handleSubmit}>
+      <div className="ops-chat-summary">
+        <strong>Manual Escalation Form</strong>
+        <p>Use this when you already know the issue needs direct human review.</p>
+      </div>
+
       <div className="customer-form-stack">
         <div>
           <label htmlFor="subject">Ticket Subject</label>
@@ -98,7 +103,7 @@ export function TicketForm({ userName, userEmail }: TicketFormProps) {
 
       <div className="button-row">
         <button className="ops-primary-button" disabled={isPending} type="submit">
-          {isPending ? "Submitting..." : "Send Response"}
+          {isPending ? "Submitting..." : "Create Human Ticket"}
         </button>
         <button className="ops-icon-button" type="button">
           Share Report

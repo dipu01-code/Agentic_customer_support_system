@@ -4,9 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useFirebaseAuth } from "@/components/firebase-auth-provider";
 import { formatDateTime } from "@/lib/format";
-import type { Ticket, TicketStats, TicketStatus } from "@/lib/types";
+import type { CustomerSummary, Ticket, TicketStats, TicketStatus } from "@/lib/types";
 
 type DashboardProps = {
+  customerSummaries: CustomerSummary[];
   initialStats: TicketStats;
   initialTickets: Ticket[];
 };
@@ -14,6 +15,7 @@ type DashboardProps = {
 type TicketResponse = {
   tickets: Ticket[];
   stats: TicketStats;
+  customerSummaries: CustomerSummary[];
 };
 
 type AdminView = "analytics" | "orchestration" | "conversation-log" | "agent-config";
@@ -99,12 +101,13 @@ function MiniTrendChart({ tickets }: { tickets: Ticket[] }) {
   );
 }
 
-export function AdminDashboard({ initialStats, initialTickets }: DashboardProps) {
+export function AdminDashboard({ customerSummaries: initialSummaries, initialStats, initialTickets }: DashboardProps) {
   const router = useRouter();
   const { user, role, loading, logOut } = useFirebaseAuth();
   const [activeView, setActiveView] = useState<AdminView>("analytics");
   const [tickets, setTickets] = useState(initialTickets);
   const [stats, setStats] = useState(initialStats);
+  const [customerSummaries, setCustomerSummaries] = useState(initialSummaries);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -206,6 +209,7 @@ export function AdminDashboard({ initialStats, initialTickets }: DashboardProps)
     const result = (await response.json()) as TicketResponse;
     setTickets(result.tickets);
     setStats(result.stats);
+    setCustomerSummaries(result.customerSummaries);
   }
 
   async function handleSave(ticketId: string, formData: FormData) {
@@ -422,6 +426,41 @@ export function AdminDashboard({ initialStats, initialTickets }: DashboardProps)
               <article className="ops-panel">
                 <div className="ops-panel-header">
                   <div>
+                    <h2>Customer Summary Feed</h2>
+                    <p>Every chatbot conversation is condensed here for human review.</p>
+                  </div>
+                </div>
+                <div className="ops-summary-list">
+                  {customerSummaries.length === 0 ? (
+                    <div className="ops-summary-card">
+                      <strong>No summaries yet</strong>
+                      <p>As users talk with the chatbot, their admin-ready summary cards will appear here.</p>
+                    </div>
+                  ) : (
+                    customerSummaries.slice(0, 4).map((summary) => (
+                      <article className="ops-summary-card" key={summary.email}>
+                        <div className="ops-summary-head">
+                          <div>
+                            <strong>{summary.customerName}</strong>
+                            <span>{summary.email}</span>
+                          </div>
+                          <label>{summary.latestTicketId ?? "No ticket"}</label>
+                        </div>
+                        <p>{summary.latestSummary}</p>
+                        <div className="ops-summary-meta">
+                          <span>{summary.totalSessions} chats</span>
+                          <span>{summary.totalTickets} tickets</span>
+                          <span>{summary.escalatedTicketCount} escalated</span>
+                        </div>
+                      </article>
+                    ))
+                  )}
+                </div>
+              </article>
+
+              <article className="ops-panel">
+                <div className="ops-panel-header">
+                  <div>
                     <h2>Agent Throughput Comparison</h2>
                     <p>Volume distribution across intake, FAQ, and escalation lanes.</p>
                   </div>
@@ -491,6 +530,7 @@ export function AdminDashboard({ initialStats, initialTickets }: DashboardProps)
                         </div>
 
                         <p className="ops-ticket-message">{ticket.message}</p>
+                        {ticket.chatSummary ? <p className="ops-ticket-summary">{ticket.chatSummary}</p> : null}
 
                         <form
                           className="ops-ticket-form"
@@ -643,7 +683,7 @@ export function AdminDashboard({ initialStats, initialTickets }: DashboardProps)
                       </div>
                       <div>
                         <strong>{ticket.category}</strong>
-                        <span>{ticket.sentiment}</span>
+                        <span>{ticket.chatSummary ?? ticket.sentiment}</span>
                       </div>
                       <div>
                         <span className={`ops-status ${ticket.status}`}>{ticket.status.replaceAll("_", " ")}</span>
@@ -653,6 +693,42 @@ export function AdminDashboard({ initialStats, initialTickets }: DashboardProps)
                         <span>{ticket.assignedTo || "Unassigned"}</span>
                       </div>
                     </div>
+                  ))
+                )}
+              </div>
+            </article>
+
+            <article className="ops-panel">
+              <div className="ops-panel-header">
+                <div>
+                  <h2>Per-User Summary Section</h2>
+                  <p>Admin-facing summaries for every customer across chat and tickets.</p>
+                </div>
+              </div>
+              <div className="ops-summary-list">
+                {customerSummaries.length === 0 ? (
+                  <div className="ops-summary-card">
+                    <strong>No customer history yet</strong>
+                    <p>Once a user chats with the bot, their summary and escalation state will appear here.</p>
+                  </div>
+                ) : (
+                  customerSummaries.map((summary) => (
+                    <article className="ops-summary-card" key={summary.email}>
+                      <div className="ops-summary-head">
+                        <div>
+                          <strong>{summary.customerName}</strong>
+                          <span>{summary.email}</span>
+                        </div>
+                        <label>{formatDateTime(summary.lastSeenAt)}</label>
+                      </div>
+                      <p>{summary.latestSummary}</p>
+                      <div className="ops-summary-meta">
+                        <span>{summary.totalSessions} chats</span>
+                        <span>{summary.activeTicketCount} active tickets</span>
+                        <span>{summary.escalatedTicketCount} escalations</span>
+                        <span>{summary.latestTicketId ?? "No linked ticket yet"}</span>
+                      </div>
+                    </article>
                   ))
                 )}
               </div>

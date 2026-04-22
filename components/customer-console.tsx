@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useFirebaseAuth } from "@/components/firebase-auth-provider";
+import { ChatSupportPanel } from "@/components/chat-support-panel";
 import { TicketForm } from "@/components/ticket-form";
 import { formatDateTime } from "@/lib/format";
 import type { Ticket, TicketStats } from "@/lib/types";
@@ -244,6 +245,10 @@ export function CustomerConsole({ adminDomain, error, stats, tickets }: Customer
                         <strong>{user.displayName ?? "Signed in user"}</strong>
                         <span>{user.email}</span>
                       </div>
+                      <ChatSupportPanel
+                        userEmail={user.email ?? ""}
+                        userName={user.displayName ?? "Signed-in user"}
+                      />
                       <TicketForm userEmail={user.email ?? ""} userName={user.displayName ?? "Signed-in user"} />
                       {role === "admin" ? (
                         <a className="ops-primary-button" href="/admin">

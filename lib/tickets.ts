@@ -135,6 +135,8 @@ export async function createTicket(input: TicketInput) {
     status: decideStatus(sentiment, urgency),
     assignedTo: null,
     source: input.source ?? "portal",
+    linkedSessionId: input.linkedSessionId ?? null,
+    chatSummary: input.chatSummary ?? null,
     createdAt: now,
     updatedAt: now
   };

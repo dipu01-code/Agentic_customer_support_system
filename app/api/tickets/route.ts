@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getCustomerSummaries } from "@/lib/chat";
 import { createTicket, getTicketStats, listTickets } from "@/lib/tickets";
 
 export async function GET() {
   try {
-    const [tickets, stats] = await Promise.all([listTickets(), getTicketStats()]);
+    const [tickets, stats, customerSummaries] = await Promise.all([
+      listTickets(),
+      getTicketStats(),
+      getCustomerSummaries()
+    ]);
 
     return NextResponse.json({
       ok: true,
       tickets,
-      stats
+      stats,
+      customerSummaries
     });
   } catch (error) {
     return NextResponse.json(

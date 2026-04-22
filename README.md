@@ -8,11 +8,14 @@ Production-oriented starter for your n8n-based support workflow with two clear u
 ## What this project includes
 
 - Next.js app with a customer-facing query form
+- Built-in support chatbot with n8n-ready webhook handoff
 - Google sign-in for both customers and admins
 - Role-restricted admin dashboard based on Google email domain
 - Ticket intake API at `/api/tickets`
+- Chatbot API at `/api/chat`
 - Basic auto-triage for category, urgency, and sentiment
 - Optional n8n webhook forwarding on ticket create and update
+- Per-user admin summary cards sourced from chatbot conversations
 - Local JSON storage for quick demo and testing
 - SQL schema you can use to move to PostgreSQL for real production persistence
 
@@ -40,12 +43,21 @@ NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=""
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=""
 NEXT_PUBLIC_FIREBASE_APP_ID=""
 NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=""
+N8N_CHAT_WEBHOOK_URL=""
 N8N_WEBHOOK_URL=""
 N8N_ADMIN_WEBHOOK_URL=""
 N8N_WEBHOOK_SECRET=""
 ```
 
 You can copy these values from Firebase Console -> Project settings -> General -> Your apps -> Web app.
+
+## Chatbot and escalation flow
+
+1. A signed-in customer starts a conversation with the built-in chatbot.
+2. The app stores the transcript and keeps a rolling summary for admins.
+3. If `N8N_CHAT_WEBHOOK_URL` is configured, the latest message and chat context are forwarded to n8n for a reply.
+4. If the issue is urgent or remains unresolved, the app auto-creates a human support ticket.
+5. Admins can review both the ticket queue and the per-user chat summary section in `/admin`.
 
 ## Firebase auth setup for Vercel deployment
 
