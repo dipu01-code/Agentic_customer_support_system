@@ -1,11 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useFirebaseAuth } from "@/components/firebase-auth-provider";
 import { ChatSupportPanel } from "@/components/chat-support-panel";
 import { TicketForm } from "@/components/ticket-form";
-import { formatDateTime } from "@/lib/format";
 import type { Ticket, TicketStats } from "@/lib/types";
 
 type CustomerConsoleProps = {
@@ -29,6 +28,7 @@ export function CustomerConsole({ adminDomain, error, stats, tickets }: Customer
   const { user, role, loading, error: authError, signInWithGoogle, logOut } = useFirebaseAuth();
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(tickets[0]?.id ?? null);
   const [filter, setFilter] = useState("");
+  const chatEntryRef = useRef<HTMLElement | null>(null);
 
   const filteredTickets = useMemo(() => {
     const query = filter.trim().toLowerCase();
@@ -47,6 +47,14 @@ export function CustomerConsole({ adminDomain, error, stats, tickets }: Customer
 
   const selectedTicket =
     filteredTickets.find((ticket) => ticket.id === selectedTicketId) ?? filteredTickets[0] ?? tickets[0] ?? null;
+  const resolvedRate = tickets.length ? Math.round((stats.resolved / tickets.length) * 100) : 0;
+  const confidenceScore = selectedTicket
+    ? selectedTicket.status === "escalated"
+      ? "68.20%"
+      : selectedTicket.urgency === "high"
+        ? "82.40%"
+        : "96.80%"
+    : "94.00%";
 
   async function handleSignIn() {
     try {
@@ -60,6 +68,10 @@ export function CustomerConsole({ adminDomain, error, stats, tickets }: Customer
   async function handleSignOut() {
     await logOut();
     router.refresh();
+  }
+
+  function jumpToChat() {
+    chatEntryRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   return (
@@ -79,15 +91,19 @@ export function CustomerConsole({ adminDomain, error, stats, tickets }: Customer
           <nav className="customer-console-nav">
             <button className="customer-console-nav-item" type="button">
               <span className="customer-console-nav-icon" />
-              Analytics
+              Command Center
             </button>
             <button className="customer-console-nav-item" type="button">
               <span className="customer-console-nav-icon" />
-              Orchestration
+              Analytics
             </button>
             <button className="customer-console-nav-item active" type="button">
               <span className="customer-console-nav-icon" />
               Conversation Log
+            </button>
+            <button className="customer-console-nav-item" type="button">
+              <span className="customer-console-nav-icon" />
+              Orchestration
             </button>
             <button className="customer-console-nav-item" type="button">
               <span className="customer-console-nav-icon" />
@@ -113,7 +129,7 @@ export function CustomerConsole({ adminDomain, error, stats, tickets }: Customer
         <header className="customer-console-topbar">
           <div className="customer-console-title-row">
             <strong>OMNIAGENT OS</strong>
-            <span>System Stable</span>
+            <span>Active Orchestration</span>
           </div>
 
           <div className="customer-console-toolbar-icons">
@@ -138,32 +154,17 @@ export function CustomerConsole({ adminDomain, error, stats, tickets }: Customer
         <section className="customer-console-layout">
           <div className="customer-console-center">
             <div className="customer-console-filters">
-              <div className="customer-console-search"> 
+              <div className="customer-console-search">
                 <input
                   className="customer-console-search-input"
                   onChange={(event) => setFilter(event.target.value)}
-                  placeholder="Filter interactions..."
+                  placeholder="Search conversations..."
                   value={filter}
                 />
               </div>
-              <button className="customer-console-chip" type="button">
-                Agent
-              </button>
-              <button className="customer-console-chip" type="button">
-                Sentiment
-              </button>
-              <button className="customer-console-chip" type="button">
-                Last 24h
-              </button>
             </div>
 
-            <div className="customer-console-table">
-              <div className="customer-console-table-head">
-                <span>Timestamp</span>
-                <span>Query Summary</span>
-                <span>Primary Agent</span>
-              </div>
-
+            <div className="customer-console-ticket-list">
               {filteredTickets.length === 0 ? (
                 <div className="customer-console-empty">No matching conversations found.</div>
               ) : (
@@ -174,16 +175,18 @@ export function CustomerConsole({ adminDomain, error, stats, tickets }: Customer
                     onClick={() => setSelectedTicketId(ticket.id)}
                     type="button"
                   >
-                    <div>
-                      <strong>{formatShortTime(ticket.updatedAt)}</strong>
+                    <div className="customer-console-row-meta">
+                      <strong>#{ticket.id.replace("TKT-", "AI-")}</strong>
+                      <span>{formatShortTime(ticket.updatedAt)}</span>
                     </div>
-                    <div>
+                    <div className="customer-console-row-main">
                       <strong>{ticket.subject}</strong>
-                      <span>{ticket.message}</span>
+                      <span>{ticket.chatSummary ?? ticket.message}</span>
                     </div>
                     <div className="customer-console-agent">
-                      <span className={`customer-console-agent-dot ${ticket.status}`} />
-                      <strong>{ticket.status === "escalated" ? "AGENT-X7" : "SUPPORT-03"}</strong>
+                      <span className={`customer-console-intent-pill ${ticket.urgency}`}>
+                        {ticket.urgency === "high" ? "High Intent" : ticket.status.replaceAll("_", " ")}
+                      </span>
                     </div>
                   </button>
                 ))
@@ -191,85 +194,113 @@ export function CustomerConsole({ adminDomain, error, stats, tickets }: Customer
             </div>
           </div>
 
-          <aside className="customer-console-detail">
+          <section className="customer-console-conversation-pane" ref={chatEntryRef}>
             {selectedTicket ? (
               <>
-                <div className="customer-console-detail-head">
-                  <div>
-                    <strong>{selectedTicket.id.replace("TKT", "Ticket #AI")}</strong>
-                    <span>Subject: {selectedTicket.subject}</span>
+                <div className="customer-console-conversation-top">
+                  <div className="customer-console-conversation-title">
+                    <strong>{selectedTicket.id.replace("TKT", "Ticket #AI-")}</strong>
+                    <span>{selectedTicket.subject}</span>
                   </div>
-                  <button className="customer-console-close" type="button">
-                    ×
-                  </button>
-                </div>
-
-                <div className="customer-console-tags">
-                  <span>{selectedTicket.category.toUpperCase()}</span>
-                  <span>{selectedTicket.urgency.toUpperCase()}</span>
-                  <span>{selectedTicket.sentiment.toUpperCase()}</span>
-                </div>
-
-                <div className="customer-console-thread">
-                  <div className="customer-console-msg user">
-                    <label>User (external)</label>
-                    <span>{formatShortTime(selectedTicket.createdAt)}</span>
-                    <p>{selectedTicket.message}</p>
-                  </div>
-
-                  <div className="customer-console-msg agent">
-                    <label>Agent-X7</label>
-                    <span>{formatShortTime(selectedTicket.updatedAt)}</span>
-                    <p>
-                      Your request has been analyzed. Current status is <strong>{selectedTicket.status}</strong> and
-                      the system has routed it through the {selectedTicket.category} support lane.
-                    </p>
-                  </div>
-
-                  <div className="customer-console-system-note">
-                    <label>System Note</label>
-                    <span>{formatDateTime(selectedTicket.updatedAt)}</span>
-                    <p>
-                      Sentiment marked as {selectedTicket.sentiment}. Escalation policy will trigger automatically if
-                      urgency increases or the issue remains unresolved.
-                    </p>
+                  <div className="customer-console-conversation-top-actions">
+                    <button className="customer-console-ghost-button" type="button">
+                      History
+                    </button>
+                    <button className="customer-console-danger-button" type="button">
+                      Close Ticket
+                    </button>
                   </div>
                 </div>
 
-                <div className="customer-console-actions">
-                  {loading ? (
-                    <div className="ops-error-banner">Checking Firebase session...</div>
-                  ) : user ? (
-                    <>
-                      <div className="customer-console-user">
-                        <strong>{user.displayName ?? "Signed in user"}</strong>
-                        <span>{user.email}</span>
-                      </div>
-                      <ChatSupportPanel
-                        userEmail={user.email ?? ""}
-                        userName={user.displayName ?? "Signed-in user"}
-                      />
-                      <TicketForm userEmail={user.email ?? ""} userName={user.displayName ?? "Signed-in user"} />
-                      {role === "admin" ? (
-                        <a className="ops-primary-button" href="/admin">
-                          Open Admin Desk
-                        </a>
-                      ) : null}
-                    </>
-                  ) : (
-                    <div className="customer-console-signin">
-                      <strong>Sign in to send response</strong>
-                      <p>Use Firebase Google login to submit a support request and stay synced with the thread.</p>
-                      <button className="ops-primary-button" onClick={handleSignIn} type="button">
-                        Continue with Google
-                      </button>
+                <div className="customer-console-conversation-subhead">
+                  <span>
+                    Assigned to: <strong>{selectedTicket.status === "escalated" ? "Human Agent" : "OmniBot 4.0"}</strong>
+                  </span>
+                  <span>
+                    Last update: <strong>{formatShortTime(selectedTicket.updatedAt)}</strong>
+                  </span>
+                </div>
+
+                {loading ? (
+                  <div className="ops-error-banner">Checking Firebase session...</div>
+                ) : user ? (
+                  <>
+                    <div className="customer-console-user">
+                      <strong>{user.displayName ?? "Signed in user"}</strong>
+                      <span>{user.email}</span>
                     </div>
-                  )}
-                </div>
+                    <ChatSupportPanel
+                      selectedTicket={selectedTicket}
+                      userEmail={user.email ?? ""}
+                      userName={user.displayName ?? "Signed-in user"}
+                    />
+                    <TicketForm userEmail={user.email ?? ""} userName={user.displayName ?? "Signed-in user"} />
+                    {role === "admin" ? (
+                      <a className="ops-primary-button" href="/admin">
+                        Open Admin Desk
+                      </a>
+                    ) : null}
+                  </>
+                ) : (
+                  <div className="customer-console-signin">
+                    <strong>Sign in to start live support</strong>
+                    <p>Use Firebase Google login to chat with OmniBot and keep every escalation linked to your account.</p>
+                    <button className="ops-primary-button" onClick={handleSignIn} type="button">
+                      Continue with Google
+                    </button>
+                  </div>
+                )}
               </>
             ) : (
               <div className="customer-console-empty">No ticket selected yet.</div>
             )}
+          </section>
+
+          <aside className="customer-console-insight-pane">
+            <div className="customer-console-insight-card">
+              <label>Sentiment Analysis</label>
+              <strong>Trajectory +{Math.max(12, resolvedRate)}% Improved</strong>
+              <div className="customer-console-chart-bars">
+                {[38, 30, 44, 58, 72, 86].map((height, index) => (
+                  <span key={height} style={{ height: `${height}%`, opacity: index === 5 ? 1 : 0.5 + index * 0.08 }} />
+                ))}
+              </div>
+              <div className="customer-console-chart-labels">
+                <span>Session Start</span>
+                <span>Now</span>
+              </div>
+            </div>
+
+            <div className="customer-console-insight-card">
+              <label>Intelligence Metadata</label>
+              <div className="customer-console-meta-grid">
+                <span>Intent</span>
+                <strong>{selectedTicket?.category.toUpperCase() ?? "GENERAL"}</strong>
+                <span>Confidence</span>
+                <strong>{confidenceScore}</strong>
+                <span>Auth Status</span>
+                <strong>{user ? "Verified" : "Pending Sign-in"}</strong>
+                <span>SLA Timer</span>
+                <strong>{selectedTicket?.status === "escalated" ? "01:45 remaining" : "Within target"}</strong>
+              </div>
+            </div>
+
+            <div className="customer-console-insight-card">
+              <label>Logic Engine Logs</label>
+              <div className="customer-console-log-box">
+                <span>[{selectedTicket ? formatShortTime(selectedTicket.updatedAt) : "00:00:00"}] Fetching session context...</span>
+                <span>[{selectedTicket ? formatShortTime(selectedTicket.createdAt) : "00:00:04"}] Intent classified as {selectedTicket?.category ?? "general"}.</span>
+                <span>[{selectedTicket ? formatShortTime(selectedTicket.updatedAt) : "00:00:08"}] Sentiment marked {selectedTicket?.sentiment ?? "neutral"}.</span>
+                <span>
+                  [{selectedTicket ? formatShortTime(selectedTicket.updatedAt) : "00:00:12"}]{" "}
+                  {selectedTicket?.status === "escalated" ? "Escalation path armed." : "Automation stable."}
+                </span>
+              </div>
+            </div>
+
+            <button className="customer-console-force-button" type="button">
+              Force Human Takeover
+            </button>
           </aside>
         </section>
 
@@ -278,6 +309,16 @@ export function CustomerConsole({ adminDomain, error, stats, tickets }: Customer
           <span>API Latency: 24ms</span>
           <span>{stats.total} total tracked tickets</span>
         </footer>
+
+        <button
+          aria-label="Open support chat"
+          className="customer-console-chat-fab"
+          onClick={jumpToChat}
+          type="button"
+        >
+          <span className="customer-console-chat-fab-icon" />
+          <span>Chat Support</span>
+        </button>
       </section>
     </main>
   );
