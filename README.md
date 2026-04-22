@@ -33,13 +33,34 @@ Copy `.env.example` to `.env.local` and update:
 APP_NAME="Agentic Customer Support System"
 APP_URL="http://localhost:3000"
 ADMIN_DOMAIN="adypu.edu.in"
-AUTH_SECRET="replace-with-a-long-random-secret"
-AUTH_GOOGLE_ID=""
-AUTH_GOOGLE_SECRET=""
+NEXT_PUBLIC_FIREBASE_API_KEY=""
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=""
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=""
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=""
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=""
+NEXT_PUBLIC_FIREBASE_APP_ID=""
+NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=""
 N8N_WEBHOOK_URL=""
 N8N_ADMIN_WEBHOOK_URL=""
 N8N_WEBHOOK_SECRET=""
 ```
+
+You can copy these values from Firebase Console -> Project settings -> General -> Your apps -> Web app.
+
+## Firebase auth setup for Vercel deployment
+
+If Google sign-in works locally but fails on Vercel with `Firebase: Error (auth/unauthorized-domain)`, the code is usually fine and Firebase is rejecting the deployed hostname.
+
+Before testing production, do all of the following:
+
+1. In Firebase Console -> Authentication -> Sign-in method, enable `Google`.
+2. In Firebase Console -> Authentication -> Settings -> Authorized domains, add:
+   - `agentic-customer-support-system.vercel.app`
+   - your custom production domain, if you use one
+3. In Vercel -> Project -> Settings -> Environment Variables, set all `NEXT_PUBLIC_FIREBASE_*` values from your Firebase web app.
+4. Redeploy after changing Firebase env vars in Vercel.
+
+Without step 2, Firebase blocks the popup even if every environment variable is correct.
 
 ## Local run
 
@@ -75,9 +96,9 @@ For actual deployment, replace the local JSON file with PostgreSQL, Supabase, Ne
 
 Recommended hardening checklist:
 
-1. Create a Google OAuth app and fill `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, and `AUTH_SECRET`.
+1. Create a Firebase project, enable Google sign-in, and fill the `NEXT_PUBLIC_FIREBASE_*` variables in Vercel.
 2. Store tickets in PostgreSQL instead of `data/tickets.json`.
-3. Put the app behind HTTPS and rotate `SESSION_SECRET`.
+3. Add your production domain to Firebase Authorized domains.
 4. Add rate limiting to `/api/tickets`.
 5. Add audit logs for admin actions.
 6. Add email notifications or Slack alerts for escalations.

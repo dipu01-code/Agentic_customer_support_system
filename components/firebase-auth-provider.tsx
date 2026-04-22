@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import type { User } from "firebase/auth";
+import type { AuthError, User } from "firebase/auth";
 import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
 import { firebaseAuth, googleProvider } from "@/lib/firebase";
 
@@ -17,6 +17,29 @@ type AuthContextValue = {
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+function getFirebaseAuthMessage(authError: unknown) {
+  if (typeof window === "undefined") {
+    return "Google sign-in failed.";
+  }
+
+  const errorCode = (authError as Partial<AuthError> | null)?.code;
+  const host = window.location.hostname;
+
+  if (errorCode === "auth/unauthorized-domain") {
+    return `Firebase blocked Google sign-in for "${host}". Add this domain in Firebase Console -> Authentication -> Settings -> Authorized domains, then redeploy if you also changed Vercel environment variables.`;
+  }
+
+  if (errorCode === "auth/popup-blocked") {
+    return "The Google sign-in popup was blocked by the browser. Allow popups for this site and try again.";
+  }
+
+  if (errorCode === "auth/popup-closed-by-user") {
+    return "Google sign-in was canceled before completion.";
+  }
+
+  return authError instanceof Error ? authError.message : "Google sign-in failed.";
+}
 
 function resolveRole(email?: string | null): Role | null {
   if (!email) {
@@ -46,7 +69,7 @@ export function FirebaseAuthProvider({ children }: { children: React.ReactNode }
     try {
       await signInWithPopup(firebaseAuth, googleProvider);
     } catch (authError) {
-      setError(authError instanceof Error ? authError.message : "Google sign-in failed.");
+      setError(getFirebaseAuthMessage(authError));
       throw authError;
     }
   }

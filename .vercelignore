@@ -1,0 +1,9 @@
+.git
+.gitignore
+README.md
+docs/
+database/
+.env.local
+.env
+npm-debug.log*
+yarn-debug.log*
