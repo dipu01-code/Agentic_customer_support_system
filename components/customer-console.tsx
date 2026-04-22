@@ -29,6 +29,7 @@ export function CustomerConsole({ adminDomain, error, stats, tickets }: Customer
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(tickets[0]?.id ?? null);
   const [filter, setFilter] = useState("");
   const chatEntryRef = useRef<HTMLElement | null>(null);
+  const isAdmin = role === "admin";
 
   const filteredTickets = useMemo(() => {
     const query = filter.trim().toLowerCase();
@@ -76,40 +77,57 @@ export function CustomerConsole({ adminDomain, error, stats, tickets }: Customer
 
   return (
     <main className="customer-console-shell">
-      <aside className="customer-console-sidebar">
+      <aside className={`customer-console-sidebar ${isAdmin ? "admin-visible" : "user-limited"}`}>
         <div>
           <div className="customer-console-brand">
             <h1>OMNIAGENT OS</h1>
-            <span>System Stable</span>
+            <span>{isAdmin ? "System Stable" : "Customer Support"}</span>
           </div>
 
           <div className="customer-console-command">
-            <strong>Command Center</strong>
-            <span>AI Engine Active</span>
+            <strong>{isAdmin ? "Command Center" : "Support Desk"}</strong>
+            <span>{isAdmin ? "AI Engine Active" : "Chat Assistance Active"}</span>
           </div>
 
-          <nav className="customer-console-nav">
-            <button className="customer-console-nav-item" type="button">
-              <span className="customer-console-nav-icon" />
-              Command Center
-            </button>
-            <button className="customer-console-nav-item" type="button">
-              <span className="customer-console-nav-icon" />
-              Analytics
-            </button>
-            <button className="customer-console-nav-item active" type="button">
-              <span className="customer-console-nav-icon" />
-              Conversation Log
-            </button>
-            <button className="customer-console-nav-item" type="button">
-              <span className="customer-console-nav-icon" />
-              Orchestration
-            </button>
-            <button className="customer-console-nav-item" type="button">
-              <span className="customer-console-nav-icon" />
-              Agent Config
-            </button>
-          </nav>
+          {isAdmin ? (
+            <nav className="customer-console-nav">
+              <button className="customer-console-nav-item" type="button">
+                <span className="customer-console-nav-icon" />
+                Command Center
+              </button>
+              <button className="customer-console-nav-item" type="button">
+                <span className="customer-console-nav-icon" />
+                Analytics
+              </button>
+              <button className="customer-console-nav-item active" type="button">
+                <span className="customer-console-nav-icon" />
+                Conversation Log
+              </button>
+              <button className="customer-console-nav-item" type="button">
+                <span className="customer-console-nav-icon" />
+                Orchestration
+              </button>
+              <button className="customer-console-nav-item" type="button">
+                <span className="customer-console-nav-icon" />
+                Agent Config
+              </button>
+            </nav>
+          ) : (
+            <nav className="customer-console-nav">
+              <button className="customer-console-nav-item active" type="button">
+                <span className="customer-console-nav-icon" />
+                My Conversations
+              </button>
+              <button className="customer-console-nav-item" onClick={jumpToChat} type="button">
+                <span className="customer-console-nav-icon" />
+                Open Chat
+              </button>
+              <button className="customer-console-nav-item" type="button">
+                <span className="customer-console-nav-icon" />
+                Ticket Status
+              </button>
+            </nav>
+          )}
         </div>
 
         <div className="customer-console-footer">
@@ -119,9 +137,13 @@ export function CustomerConsole({ adminDomain, error, stats, tickets }: Customer
           <button className="customer-console-foot-link" type="button">
             Documentation
           </button>
-          <a className="customer-console-admin-link" href="/admin/login">
-            Admin portal for @{adminDomain}
-          </a>
+          {isAdmin ? (
+            <a className="customer-console-admin-link" href="/admin">
+              Open admin desk
+            </a>
+          ) : (
+            <span className="customer-console-admin-note">Admin controls are visible only to @{adminDomain} accounts.</span>
+          )}
         </div>
       </aside>
 

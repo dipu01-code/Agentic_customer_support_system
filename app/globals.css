@@ -1287,6 +1287,13 @@ textarea {
   color: #58a0ff;
 }
 
+.customer-console-admin-note {
+  display: block;
+  margin-top: 1.3rem;
+  color: #7f90bb;
+  line-height: 1.7;
+}
+
 .customer-console-main {
   display: grid;
   grid-template-rows: 80px 1fr auto;
