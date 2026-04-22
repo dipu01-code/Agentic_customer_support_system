@@ -1,0 +1,18 @@
+[
+  {
+    "id": "TKT-EC57E672",
+    "customerName": "Dipendra Kumar Senapati",
+    "email": "zorodaa1080@gmail.com",
+    "subject": "Refund",
+    "message": "Money for refund",
+    "channel": "web",
+    "category": "billing",
+    "urgency": "low",
+    "sentiment": "neutral",
+    "status": "open",
+    "assignedTo": "Azmol",
+    "source": "portal",
+    "createdAt": "2026-04-22T15:36:53.480Z",
+    "updatedAt": "2026-04-22T19:38:00.655Z"
+  }
+]
