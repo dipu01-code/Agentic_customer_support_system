@@ -19,12 +19,12 @@ type ChatResponse = {
   message?: string;
 };
 
-function createSyntheticMessage(id: string, role: "user" | "assistant", content: string): ChatMessage {
+function createSyntheticMessage(id: string, role: "user" | "assistant", content: string, createdAt: string): ChatMessage {
   return {
     id,
     role,
     content,
-    createdAt: new Date().toISOString()
+    createdAt
   };
 }
 
@@ -38,14 +38,20 @@ export function ChatSupportPanel({ userName, userEmail, selectedTicket = null }:
     ? session.messages
     : selectedTicket
       ? [
-          createSyntheticMessage(`seed-user-${selectedTicket.id}`, "user", selectedTicket.message),
+          createSyntheticMessage(
+            `seed-user-${selectedTicket.id}`,
+            "user",
+            selectedTicket.message,
+            selectedTicket.createdAt
+          ),
           createSyntheticMessage(
             `seed-agent-${selectedTicket.id}`,
             "assistant",
             `I have reviewed ticket ${selectedTicket.id}. Current lane: ${selectedTicket.category}. Status: ${selectedTicket.status}. ${
               selectedTicket.chatSummary ??
               "I can continue helping here, or escalate this case to a human agent if the issue is still unresolved."
-            }`
+            }`,
+            selectedTicket.updatedAt
           )
         ]
       : [];

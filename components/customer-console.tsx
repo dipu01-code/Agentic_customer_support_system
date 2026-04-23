@@ -23,6 +23,14 @@ function formatShortTime(value: string) {
   }).format(new Date(value));
 }
 
+function safeUpper(value?: string | null, fallback = "GENERAL") {
+  return value ? value.toUpperCase() : fallback;
+}
+
+function safeStatusLabel(value?: string | null, fallback = "open") {
+  return (value ?? fallback).replaceAll("_", " ");
+}
+
 export function CustomerConsole({ adminDomain, error, stats, tickets }: CustomerConsoleProps) {
   const router = useRouter();
   const { user, role, loading, error: authError, signInWithGoogle, logOut } = useFirebaseAuth();
@@ -207,7 +215,7 @@ export function CustomerConsole({ adminDomain, error, stats, tickets }: Customer
                     </div>
                     <div className="customer-console-agent">
                       <span className={`customer-console-intent-pill ${ticket.urgency}`}>
-                        {ticket.urgency === "high" ? "High Intent" : ticket.status.replaceAll("_", " ")}
+                        {ticket.urgency === "high" ? "High Intent" : safeStatusLabel(ticket.status)}
                       </span>
                     </div>
                   </button>
@@ -297,7 +305,7 @@ export function CustomerConsole({ adminDomain, error, stats, tickets }: Customer
               <label>Intelligence Metadata</label>
               <div className="customer-console-meta-grid">
                 <span>Intent</span>
-                <strong>{selectedTicket?.category.toUpperCase() ?? "GENERAL"}</strong>
+                <strong>{safeUpper(selectedTicket?.category)}</strong>
                 <span>Confidence</span>
                 <strong>{confidenceScore}</strong>
                 <span>Auth Status</span>
