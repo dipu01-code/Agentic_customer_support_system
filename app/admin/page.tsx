@@ -4,7 +4,20 @@ import { getTicketStats, listTickets } from "@/lib/tickets";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminPage() {
+type AdminPageProps = {
+  searchParams: Promise<{ view?: string }>;
+};
+
+export default async function AdminPage({ searchParams }: AdminPageProps) {
   const [stats, tickets, customerSummaries] = await Promise.all([getTicketStats(), listTickets(), getCustomerSummaries()]);
-  return <AdminDashboard customerSummaries={customerSummaries} initialStats={stats} initialTickets={tickets} />;
+  const params = await searchParams;
+
+  return (
+    <AdminDashboard
+      customerSummaries={customerSummaries}
+      initialStats={stats}
+      initialTickets={tickets}
+      initialView={params.view}
+    />
+  );
 }

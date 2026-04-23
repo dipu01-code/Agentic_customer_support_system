@@ -10,6 +10,7 @@ type DashboardProps = {
   customerSummaries: CustomerSummary[];
   initialStats: TicketStats;
   initialTickets: Ticket[];
+  initialView?: string;
 };
 
 type TicketResponse = {
@@ -101,10 +102,28 @@ function MiniTrendChart({ tickets }: { tickets: Ticket[] }) {
   );
 }
 
-export function AdminDashboard({ customerSummaries: initialSummaries, initialStats, initialTickets }: DashboardProps) {
+function resolveInitialView(value?: string): AdminView {
+  switch (value) {
+    case "analytics":
+    case "orchestration":
+    case "conversation-log":
+    case "agent-config":
+    case "command-center":
+      return value;
+    default:
+      return "command-center";
+  }
+}
+
+export function AdminDashboard({
+  customerSummaries: initialSummaries,
+  initialStats,
+  initialTickets,
+  initialView
+}: DashboardProps) {
   const router = useRouter();
   const { user, role, loading, logOut } = useFirebaseAuth();
-  const [activeView, setActiveView] = useState<AdminView>("command-center");
+  const [activeView, setActiveView] = useState<AdminView>(() => resolveInitialView(initialView));
   const [tickets, setTickets] = useState(initialTickets);
   const [stats, setStats] = useState(initialStats);
   const [customerSummaries, setCustomerSummaries] = useState(initialSummaries);
@@ -130,6 +149,11 @@ export function AdminDashboard({ customerSummaries: initialSummaries, initialSta
       router.replace("/?error=Only%20@adypu.edu.in%20accounts%20can%20open%20the%20admin%20portal");
     }
   }, [loading, role, router, user]);
+
+  function navigateToView(view: AdminView) {
+    setActiveView(view);
+    router.replace(`/admin?view=${view}`);
+  }
 
   const dashboardMetrics = useMemo(() => {
     const positive = tickets.filter((ticket) => ticket.sentiment === "positive").length;
@@ -284,23 +308,23 @@ export function AdminDashboard({ customerSummaries: initialSummaries, initialSta
           <NavItem
             active={activeView === "command-center"}
             label="Command Center"
-            onClick={() => setActiveView("command-center")}
+            onClick={() => navigateToView("command-center")}
           />
-          <NavItem active={activeView === "analytics"} label="Analytics" onClick={() => setActiveView("analytics")} />
+          <NavItem active={activeView === "analytics"} label="Analytics" onClick={() => navigateToView("analytics")} />
           <NavItem
             active={activeView === "orchestration"}
             label="Orchestration"
-            onClick={() => setActiveView("orchestration")}
+            onClick={() => navigateToView("orchestration")}
           />
           <NavItem
             active={activeView === "conversation-log"}
             label="Conversation Log"
-            onClick={() => setActiveView("conversation-log")}
+            onClick={() => navigateToView("conversation-log")}
           />
           <NavItem
             active={activeView === "agent-config"}
             label="Agent Config"
-            onClick={() => setActiveView("agent-config")}
+            onClick={() => navigateToView("agent-config")}
           />
         </nav>
 

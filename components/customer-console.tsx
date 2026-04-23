@@ -83,6 +83,10 @@ export function CustomerConsole({ adminDomain, error, stats, tickets }: Customer
     chatEntryRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  function openAdminView(view: "command-center" | "analytics" | "conversation-log" | "orchestration" | "agent-config") {
+    router.push(`/admin?view=${view}`);
+  }
+
   return (
     <main className="customer-console-shell">
       <aside className={`customer-console-sidebar ${isAdmin ? "admin-visible" : "user-limited"}`}>
@@ -99,30 +103,30 @@ export function CustomerConsole({ adminDomain, error, stats, tickets }: Customer
 
           {isAdmin ? (
             <nav className="customer-console-nav">
-              <button className="customer-console-nav-item" type="button">
+              <button className="customer-console-nav-item" onClick={() => openAdminView("command-center")} type="button">
                 <span className="customer-console-nav-icon" />
                 Command Center
               </button>
-              <button className="customer-console-nav-item" type="button">
+              <button className="customer-console-nav-item" onClick={() => openAdminView("analytics")} type="button">
                 <span className="customer-console-nav-icon" />
                 Analytics
               </button>
-              <button className="customer-console-nav-item active" type="button">
+              <button className="customer-console-nav-item active" onClick={() => openAdminView("conversation-log")} type="button">
                 <span className="customer-console-nav-icon" />
                 Conversation Log
               </button>
-              <button className="customer-console-nav-item" type="button">
+              <button className="customer-console-nav-item" onClick={() => openAdminView("orchestration")} type="button">
                 <span className="customer-console-nav-icon" />
                 Orchestration
               </button>
-              <button className="customer-console-nav-item" type="button">
+              <button className="customer-console-nav-item" onClick={() => openAdminView("agent-config")} type="button">
                 <span className="customer-console-nav-icon" />
                 Agent Config
               </button>
             </nav>
           ) : (
             <nav className="customer-console-nav">
-              <button className="customer-console-nav-item active" type="button">
+              <button className="customer-console-nav-item active" onClick={() => router.push("/")} type="button">
                 <span className="customer-console-nav-icon" />
                 My Conversations
               </button>
@@ -130,7 +134,7 @@ export function CustomerConsole({ adminDomain, error, stats, tickets }: Customer
                 <span className="customer-console-nav-icon" />
                 Open Chat
               </button>
-              <button className="customer-console-nav-item" type="button">
+              <button className="customer-console-nav-item" onClick={() => router.push("/ticket-status")} type="button">
                 <span className="customer-console-nav-icon" />
                 Ticket Status
               </button>
