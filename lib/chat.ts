@@ -16,6 +16,31 @@ type ChatRequest = {
   sessionId?: string;
 };
 
+type N8nSupportResponse = {
+  success?: boolean;
+  query_id?: string;
+  ticket_id?: string;
+  response_type?: "faq_resolved" | "escalation" | string;
+  message?: string;
+  escalation?: {
+    team?: string;
+    priority?: string;
+    estimated_wait?: string;
+    self_service_options?: string[];
+    collect_info?: string[];
+  };
+  metadata?: {
+    topic?: string | null;
+    urgency?: string | null;
+    sentiment?: string | null;
+    faq_confidence?: number;
+    answered_from_kb?: boolean;
+    suggested_articles?: string[];
+    follow_up_needed?: boolean;
+    processed_at?: string;
+  };
+};
+
 function normalizeText(value: string) {
   return value.trim().replace(/\s+/g, " ");
 }
@@ -117,18 +142,68 @@ async function requestN8nReply(payload: {
         "Content-Type": "application/json",
         ...(appConfig.n8nWebhookSecret ? { "x-webhook-secret": appConfig.n8nWebhookSecret } : {})
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({
+        query_id: payload.session.id,
+        message: payload.latestMessage,
+        customer_id: payload.session.email,
+        customer_name: payload.session.customerName,
+        customer_email: payload.session.email,
+        channel: payload.session.channel,
+        conversation_history: payload.session.messages.map((message) => ({
+          role: message.role,
+          content: message.content,
+          created_at: message.createdAt
+        })),
+        app_context: {
+          should_escalate: payload.shouldEscalate,
+          session_id: payload.session.id,
+          summary: buildSummary(payload.session.messages)
+        }
+      })
     });
 
     if (!response.ok) {
       return null;
     }
 
-    const result = (await response.json()) as { reply?: string };
-    return typeof result.reply === "string" && result.reply.trim() ? result.reply.trim() : null;
+    const result = (await response.json()) as N8nSupportResponse;
+    return result;
   } catch {
     return null;
   }
+}
+
+function mapN8nTopicToCategory(topic?: string | null): Ticket["category"] {
+  if (topic === "billing") return "billing";
+  if (topic === "technical") return "technical";
+  if (topic === "account") return "account";
+  return "general";
+}
+
+function mapN8nUrgencyToTicketUrgency(urgency?: string | null): Ticket["urgency"] {
+  if (urgency === "critical" || urgency === "high") return "high";
+  if (urgency === "medium") return "medium";
+  return "low";
+}
+
+function mapN8nSentiment(sentiment?: string | null): Ticket["sentiment"] {
+  if (sentiment === "positive") return "positive";
+  if (sentiment === "negative" || sentiment === "very_negative") return "negative";
+  return "neutral";
+}
+
+function buildEscalationSummary(result: N8nSupportResponse, sessionSummary: string) {
+  const parts = [
+    sessionSummary,
+    result.escalation?.team ? `Recommended team: ${result.escalation.team}.` : null,
+    result.escalation?.priority ? `Priority: ${result.escalation.priority}.` : null,
+    result.escalation?.estimated_wait ? `Estimated wait: ${result.escalation.estimated_wait}.` : null,
+    result.metadata?.suggested_articles?.length
+      ? `Suggested articles: ${result.metadata.suggested_articles.join(", ")}.`
+      : null
+  ];
+
+  return parts.filter(Boolean).join(" ");
 }
 
 function createMessage(role: "user" | "assistant", content: string): ChatMessage {
@@ -251,14 +326,18 @@ export async function sendChatMessage(input: ChatRequest): Promise<ChatReply> {
   session.messages = [...session.messages, userMessage];
 
   const escalationDecision = shouldEscalate(message, session.messages.filter((entry) => entry.role === "user").length);
-  const n8nReply = await requestN8nReply({
+  const n8nResult = await requestN8nReply({
     session,
     latestMessage: message,
     shouldEscalate: escalationDecision.escalate
   });
+  const n8nReply =
+    typeof n8nResult?.message === "string" && n8nResult.message.trim() ? n8nResult.message.trim() : null;
+  const shouldEscalateFromN8n = n8nResult?.response_type === "escalation";
+  const shouldEscalateFinal = shouldEscalateFromN8n || escalationDecision.escalate;
   const assistantMessage = createMessage(
     "assistant",
-    n8nReply ?? fallbackAssistantReply(message, escalationDecision.escalate)
+    n8nReply ?? fallbackAssistantReply(message, shouldEscalateFinal)
   );
 
   session.messages = [...session.messages, assistantMessage];
@@ -266,25 +345,33 @@ export async function sendChatMessage(input: ChatRequest): Promise<ChatReply> {
 
   let createdTicket: Ticket | null = null;
 
-  if (escalationDecision.escalate) {
+  if (shouldEscalateFinal) {
     session.status = "escalated";
-    session.escalationReason = escalationDecision.reason;
+    session.escalationReason =
+      n8nResult?.escalation?.priority || escalationDecision.reason || "Support workflow requested escalation.";
 
     if (!session.escalatedTicketId) {
       createdTicket = await createTicket({
         customerName,
         email,
-        subject: `Chat escalation: ${message.slice(0, 72)}`,
-        message,
+        subject:
+          n8nResult?.metadata?.topic && n8nResult.metadata.topic !== "general"
+            ? `Chat escalation: ${n8nResult.metadata.topic}`
+            : `Chat escalation: ${message.slice(0, 72)}`,
+        message: n8nReply ?? message,
         channel: input.channel ?? "web-chat",
         source: "portal",
         linkedSessionId: session.id,
-        chatSummary: session.summary
+        chatSummary: buildEscalationSummary(n8nResult ?? {}, session.summary),
+        category: mapN8nTopicToCategory(n8nResult?.metadata?.topic),
+        urgency: mapN8nUrgencyToTicketUrgency(n8nResult?.metadata?.urgency),
+        sentiment: mapN8nSentiment(n8nResult?.metadata?.sentiment),
+        status: "escalated"
       });
       session.escalatedTicketId = createdTicket.id;
     }
   } else {
-    session.status = "active";
+    session.status = n8nResult?.metadata?.follow_up_needed ? "active" : "resolved";
   }
 
   if (sessionIndex >= 0) {
@@ -300,7 +387,7 @@ export async function sendChatMessage(input: ChatRequest): Promise<ChatReply> {
   return {
     session,
     reply: assistantMessage,
-    escalated: escalationDecision.escalate,
+    escalated: shouldEscalateFinal,
     ticket: createdTicket
   };
 }

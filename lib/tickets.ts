@@ -117,9 +117,9 @@ export async function createTicket(input: TicketInput) {
   const subject = normalizeText(input.subject);
   const message = normalizeText(input.message);
   const combinedText = `${subject} ${message}`;
-  const category = classifyCategory(combinedText);
-  const sentiment = detectSentiment(combinedText);
-  const urgency = detectUrgency(combinedText);
+  const category = input.category ?? classifyCategory(combinedText);
+  const sentiment = input.sentiment ?? detectSentiment(combinedText);
+  const urgency = input.urgency ?? detectUrgency(combinedText);
   const now = new Date().toISOString();
 
   const ticket: Ticket = {
@@ -132,7 +132,7 @@ export async function createTicket(input: TicketInput) {
     category,
     urgency,
     sentiment,
-    status: decideStatus(sentiment, urgency),
+    status: input.status ?? decideStatus(sentiment, urgency),
     assignedTo: null,
     source: input.source ?? "portal",
     linkedSessionId: input.linkedSessionId ?? null,

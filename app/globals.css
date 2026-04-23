@@ -860,6 +860,24 @@ textarea {
   font-size: 0.82rem;
 }
 
+.ops-command-card {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(123, 146, 210, 0.14);
+  background: rgba(23, 31, 58, 0.85);
+}
+
+.ops-command-card strong {
+  color: #f2f6ff;
+  font-size: 1.1rem;
+}
+
+.ops-command-card span {
+  color: #8ea0cb;
+}
+
 .ops-ticket-form {
   display: grid;
   grid-template-columns: 1fr 1.2fr auto;

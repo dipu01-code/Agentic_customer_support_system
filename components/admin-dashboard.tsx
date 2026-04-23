@@ -18,7 +18,7 @@ type TicketResponse = {
   customerSummaries: CustomerSummary[];
 };
 
-type AdminView = "analytics" | "orchestration" | "conversation-log" | "agent-config";
+type AdminView = "command-center" | "analytics" | "orchestration" | "conversation-log" | "agent-config";
 
 type NavItemProps = {
   onClick?: () => void;
@@ -104,7 +104,7 @@ function MiniTrendChart({ tickets }: { tickets: Ticket[] }) {
 export function AdminDashboard({ customerSummaries: initialSummaries, initialStats, initialTickets }: DashboardProps) {
   const router = useRouter();
   const { user, role, loading, logOut } = useFirebaseAuth();
-  const [activeView, setActiveView] = useState<AdminView>("analytics");
+  const [activeView, setActiveView] = useState<AdminView>("command-center");
   const [tickets, setTickets] = useState(initialTickets);
   const [stats, setStats] = useState(initialStats);
   const [customerSummaries, setCustomerSummaries] = useState(initialSummaries);
@@ -281,6 +281,11 @@ export function AdminDashboard({ customerSummaries: initialSummaries, initialSta
         </div>
 
         <nav className="ops-nav">
+          <NavItem
+            active={activeView === "command-center"}
+            label="Command Center"
+            onClick={() => setActiveView("command-center")}
+          />
           <NavItem active={activeView === "analytics"} label="Analytics" onClick={() => setActiveView("analytics")} />
           <NavItem
             active={activeView === "orchestration"}
@@ -327,6 +332,174 @@ export function AdminDashboard({ customerSummaries: initialSummaries, initialSta
         </header>
 
         {error ? <div className="ops-error-banner">{error}</div> : null}
+
+        {activeView === "command-center" ? (
+          <section className="ops-section-stack">
+            <section className="ops-metrics-grid">
+              <MetricCard
+                detail={`${stats.open} active conversations`}
+                label="Open Queue"
+                tone="blue"
+                value={String(stats.open)}
+              />
+              <MetricCard
+                detail="Needs direct operator review"
+                label="Escalated Cases"
+                tone="rose"
+                value={String(stats.escalated)}
+              />
+              <MetricCard
+                detail={`${customerSummaries.length} tracked customers`}
+                label="Customer Threads"
+                tone="green"
+                value={String(customerSummaries.length)}
+              />
+              <MetricCard
+                detail="Closed by bot or human"
+                label="Resolved"
+                tone="amber"
+                value={String(stats.resolved)}
+              />
+            </section>
+
+            <section className="ops-grid">
+              <article className="ops-panel">
+                <div className="ops-panel-header">
+                  <div>
+                    <h2>Priority Dispatch Board</h2>
+                    <p>Cases that need the fastest admin action right now.</p>
+                  </div>
+                </div>
+                <div className="ops-alert-list">
+                  {dashboardMetrics.highPriority.length === 0 ? (
+                    <div className="ops-alert-card">
+                      <strong>No immediate escalations</strong>
+                      <p>The support system is stable and no urgent dispatch is pending.</p>
+                    </div>
+                  ) : (
+                    dashboardMetrics.highPriority.map((ticket) => (
+                      <article className="ops-alert-card" key={ticket.id}>
+                        <div className="ops-alert-top">
+                          <strong>{ticket.status === "escalated" ? "Human Review Required" : "High Priority"}</strong>
+                          <span>{formatDateTime(ticket.updatedAt)}</span>
+                        </div>
+                        <p>{ticket.subject}</p>
+                        <small>
+                          {ticket.customerName} · {ticket.email}
+                        </small>
+                      </article>
+                    ))
+                  )}
+                </div>
+              </article>
+
+              <article className="ops-panel">
+                <div className="ops-panel-header">
+                  <div>
+                    <h2>Operator Snapshot</h2>
+                    <p>Quick command view for the signed-in admin.</p>
+                  </div>
+                </div>
+                <div className="ops-command-card">
+                  <strong>{user.displayName ?? "System Admin"}</strong>
+                  <span>{user.email}</span>
+                  <div className="ops-summary-meta">
+                    <span>{stats.total} total tickets</span>
+                    <span>{stats.open + stats.escalated} active workload</span>
+                    <span>{dashboardMetrics.resolutionRate}% resolution rate</span>
+                  </div>
+                </div>
+                <div className="ops-routing-list">
+                  <div className="ops-routing-row">
+                    <span>Next best action</span>
+                    <strong>{stats.escalated > 0 ? "Review escalated queue" : "Monitor live chatbot traffic"}</strong>
+                  </div>
+                  <div className="ops-routing-row">
+                    <span>Automation status</span>
+                    <strong>{stats.escalated > 2 ? "Escalation pressure rising" : "Stable"}</strong>
+                  </div>
+                  <div className="ops-routing-row">
+                    <span>Admin access</span>
+                    <strong>Verified for @{user.email?.split("@")[1] ?? "admin domain"}</strong>
+                  </div>
+                </div>
+              </article>
+            </section>
+
+            <section className="ops-bottom-grid">
+              <article className="ops-panel">
+                <div className="ops-panel-header">
+                  <div>
+                    <h2>Recent Customer Summaries</h2>
+                    <p>Rolling summaries from chatbot and manual escalations.</p>
+                  </div>
+                </div>
+                <div className="ops-summary-list">
+                  {customerSummaries.length === 0 ? (
+                    <div className="ops-summary-card">
+                      <strong>No customer summaries yet</strong>
+                      <p>Customer summaries will appear here once users engage with the support bot.</p>
+                    </div>
+                  ) : (
+                    customerSummaries.slice(0, 3).map((summary) => (
+                      <article className="ops-summary-card" key={summary.email}>
+                        <div className="ops-summary-head">
+                          <div>
+                            <strong>{summary.customerName}</strong>
+                            <span>{summary.email}</span>
+                          </div>
+                          <label>{summary.latestTicketId ?? "No ticket"}</label>
+                        </div>
+                        <p>{summary.latestSummary}</p>
+                        <div className="ops-summary-meta">
+                          <span>{summary.totalSessions} chats</span>
+                          <span>{summary.activeTicketCount} active</span>
+                          <span>{summary.escalatedTicketCount} escalated</span>
+                        </div>
+                      </article>
+                    ))
+                  )}
+                </div>
+              </article>
+
+              <article className="ops-panel">
+                <div className="ops-panel-header">
+                  <div>
+                    <h2>Queue Controls</h2>
+                    <p>Fast updates for the newest support tickets.</p>
+                  </div>
+                </div>
+                <div className="ops-ticket-stack">
+                  {tickets.length === 0 ? (
+                    <div className="ops-ticket-card">
+                      <strong>No tickets yet</strong>
+                      <p>Incoming chatbot escalations and manual tickets will appear here.</p>
+                    </div>
+                  ) : (
+                    tickets.slice(0, 3).map((ticket) => (
+                      <article className="ops-ticket-card" key={ticket.id}>
+                        <div className="ops-ticket-head">
+                          <div>
+                            <strong>{ticket.subject}</strong>
+                            <p>
+                              {ticket.customerName} · {ticket.email}
+                            </p>
+                          </div>
+                          <span className={`ops-status ${ticket.status}`}>{ticket.status.replaceAll("_", " ")}</span>
+                        </div>
+                        <div className="ops-ticket-meta">
+                          <span>{ticket.category}</span>
+                          <span>{ticket.urgency}</span>
+                          <span>{ticket.sentiment}</span>
+                        </div>
+                      </article>
+                    ))
+                  )}
+                </div>
+              </article>
+            </section>
+          </section>
+        ) : null}
 
         {activeView === "analytics" ? (
           <>

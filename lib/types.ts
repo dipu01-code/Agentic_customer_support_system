@@ -33,6 +33,10 @@ export type TicketInput = {
   source?: "portal" | "n8n";
   linkedSessionId?: string | null;
   chatSummary?: string | null;
+  category?: TicketCategory;
+  urgency?: TicketUrgency;
+  sentiment?: TicketSentiment;
+  status?: TicketStatus;
 };
 
 export type TicketStats = {
